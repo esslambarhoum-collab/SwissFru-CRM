@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>SwissFru · Distributor CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy: #1a2340; --navy2: #111828; --navy3: #0d1520;
+  --gold: #c9a84c; --gold-light: #e8c97a; --gold-dim: rgba(201,168,76,0.15);
+  --cream: #faf8f3; --white: #ffffff;
+  --text: #e8e4dc; --text-mid: #9aa0b4; --text-dim: #5a6278;
+  --border: rgba(201,168,76,0.15); --border-dim: rgba(255,255,255,0.06);
+  --green: #4ade80; --blue: #60a5fa; --amber: #fbbf24; --red: #f87171;
+}
+html { height: 100%; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--navy3);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ── CONFIG BANNER ── */
+#config-banner {
+  background: rgba(248,113,113,0.12);
+  border-bottom: 1px solid rgba(248,113,113,0.3);
+  padding: 10px 24px;
+  font-size: 12px;
+  color: #f87171;
+  text-align: center;
+  display: none;
+}
+#config-banner a { color: var(--gold); text-decoration: underline; cursor: pointer; }
+
+/* ── LOGIN ── */
+#login-screen {
+  position: fixed; inset: 0; background: var(--navy3);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.login-box {
+  background: var(--navy2); border: 1px solid var(--border);
+  padding: 48px 52px; width: 100%; max-width: 380px; text-align: center;
+}
+.login-logo { font-size: 13px; font-weight: 500; color: var(--gold); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 4px; }
+.login-logo span { font-weight: 300; }
+.login-sub { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 36px; }
+.login-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-mid); margin-bottom: 8px; display: block; text-align: left; }
+.login-input { width: 100%; background: var(--navy3); border: 1px solid var(--border-dim); color: var(--text); padding: 13px 16px; font-size: 15px; font-family: 'DM Sans', sans-serif; outline: none; margin-bottom: 16px; letter-spacing: 2px; transition: border-color 0.2s; }
+.login-input:focus { border-color: var(--gold); }
+.login-btn { width: 100%; background: var(--gold); color: var(--navy2); border: none; padding: 13px; font-size: 11px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: opacity 0.2s; }
+.login-btn:hover { opacity: 0.88; }
+.login-error { font-size: 12px; color: var(--red); margin-top: 12px; display: none; }
+
+/* ── APP ── */
+#app { display: none; }
+
+.app-header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(13,21,32,0.97); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 56px;
+}
+.header-brand { display: flex; align-items: baseline; gap: 12px; }
+.header-wm { font-size: 13px; font-weight: 500; color: var(--gold); letter-spacing: 3px; text-transform: uppercase; }
+.header-wm span { font-weight: 300; }
+.header-pipe { color: var(--text-dim); }
+.header-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); }
+.header-actions { display: flex; align-items: center; gap: 10px; }
+
+.btn { font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; border: none; cursor: pointer; padding: 8px 16px; transition: all 0.2s; }
+.btn-gold { background: var(--gold); color: var(--navy2); }
+.btn-gold:hover { opacity: 0.85; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-mid); }
+.btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+.btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border-dim); }
+.btn-ghost:hover { color: var(--text); }
+.btn-sm { padding: 6px 12px; font-size: 9px; }
+
+/* ── SYNC INDICATOR ── */
+.sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; }
+.sync-dot.syncing { background: var(--amber); animation: pulse-amber 1s infinite; }
+.sync-dot.error { background: var(--red); }
+@keyframes pulse-amber { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+.sync-label { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+
+/* ── STATS ── */
+.stats-bar { display: grid; grid-template-columns: repeat(5,1fr); border-bottom: 1px solid var(--border); background: var(--navy2); }
+.stats-cell { padding: 14px 20px; border-right: 1px solid var(--border); }
+.stats-cell:last-child { border-right: none; }
+.stats-n { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 500; color: var(--gold); line-height: 1; }
+.stats-l { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-dim); margin-top: 2px; }
+
+/* ── FILTERS ── */
+.filters-bar { padding: 12px 24px; border-bottom: 1px solid var(--border-dim); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--navy2); }
+.search-wrap { position: relative; flex: 1; min-width: 180px; }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 13px; pointer-events: none; }
+.search-input { width: 100%; background: var(--navy3); border: 1px solid var(--border-dim); color: var(--text); padding: 9px 14px 9px 36px; font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+.search-input:focus { border-color: var(--gold); }
+.filter-select { background: var(--navy3); border: 1px solid var(--border-dim); color: var(--text-mid); padding: 9px 12px; font-size: 11px; font-family: 'DM Sans', sans-serif; outline: none; cursor: pointer; }
+.filter-select:focus { border-color: var(--gold); }
+
+/* ── STATUS CHIPS ── */
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 8.5px; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 9px; font-weight: 500; white-space: nowrap; }
+.chip-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.chip-active    { background: rgba(74,222,128,0.12);  color: var(--green); border: 1px solid rgba(74,222,128,0.3); }
+.chip-pending   { background: rgba(251,191,36,0.12);  color: var(--amber); border: 1px solid rgba(251,191,36,0.3); }
+.chip-followup  { background: rgba(96,165,250,0.12);  color: var(--blue);  border: 1px solid rgba(96,165,250,0.3); }
+.chip-declined  { background: rgba(248,113,113,0.10); color: var(--red);   border: 1px solid rgba(248,113,113,0.25); }
+.chip-order     { background: rgba(201,168,76,0.15);  color: var(--gold);  border: 1px solid rgba(201,168,76,0.4); }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 900px; }
+thead tr { background: var(--navy2); border-bottom: 2px solid var(--border); }
+th { text-align: left; padding: 11px 16px; font-size: 8.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); font-weight: 500; white-space: nowrap; }
+tbody tr { border-bottom: 1px solid var(--border-dim); transition: background 0.15s; cursor: pointer; }
+tbody tr:hover { background: rgba(201,168,76,0.04); }
+td { padding: 13px 16px; font-size: 13px; color: var(--text); vertical-align: middle; }
+.td-name { font-weight: 500; color: var(--white); }
+.td-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.td-flag { font-size: 18px; }
+.td-method { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-mid); border: 1px solid var(--border-dim); padding: 2px 8px; display: inline-block; }
+.td-reminder { font-size: 11px; color: var(--blue); }
+.td-reminder.overdue { color: var(--red); }
+
+/* ── EMPTY ── */
+.empty-state { text-align: center; padding: 80px 24px; color: var(--text-dim); }
+.empty-icon { font-size: 40px; margin-bottom: 16px; opacity: 0.4; }
+.empty-state h3 { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; color: var(--text-mid); margin-bottom: 8px; }
+.empty-state p { font-size: 13px; line-height: 1.7; max-width: 300px; margin: 0 auto; }
+
+/* ── MODAL ── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(13,21,32,0.88); backdrop-filter: blur(6px); z-index: 200; display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--navy2); border: 1px solid var(--border); width: 100%; max-width: 560px; animation: slideIn 0.2s ease; }
+@keyframes slideIn { from { transform: translateY(16px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+.modal-header { padding: 24px 28px 20px; border-bottom: 1px solid var(--border-dim); display: flex; justify-content: space-between; align-items: center; }
+.modal-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 500; color: var(--white); }
+.modal-close { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; padding: 4px; line-height: 1; }
+.modal-close:hover { color: var(--white); }
+.modal-body { padding: 24px 28px; }
+.modal-footer { padding: 16px 28px; border-top: 1px solid var(--border-dim); display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ── FORM ── */
+.form-row { margin-bottom: 16px; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.form-label { font-size: 8.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); display: block; margin-bottom: 6px; }
+.form-input, .form-select, .form-textarea { width: 100%; background: var(--navy3); border: 1px solid var(--border-dim); color: var(--text); padding: 10px 13px; font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+.form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--gold); }
+.form-textarea { min-height: 80px; resize: vertical; }
+.form-select option { background: var(--navy2); }
+.form-check-row { display: flex; align-items: center; gap: 10px; background: var(--navy3); border: 1px solid var(--border-dim); padding: 12px 14px; cursor: pointer; }
+.form-check-row input[type="checkbox"] { accent-color: var(--gold); width: 16px; height: 16px; flex-shrink: 0; }
+.form-check-label { font-size: 13px; color: var(--text-mid); flex: 1; }
+.form-check-sub { font-size: 11px; color: var(--text-dim); }
+
+/* ── DETAIL PANEL ── */
+.detail-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 420px; background: var(--navy2); border-left: 1px solid var(--border); z-index: 100; transform: translateX(100%); transition: transform 0.28s ease; overflow-y: auto; display: flex; flex-direction: column; }
+.detail-panel.open { transform: translateX(0); }
+.detail-header { padding: 24px 24px 20px; border-bottom: 1px solid var(--border-dim); display: flex; justify-content: space-between; align-items: flex-start; position: sticky; top: 0; background: var(--navy2); z-index: 1; }
+.detail-country { font-size: 28px; margin-bottom: 6px; }
+.detail-name { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 500; color: var(--white); margin-bottom: 4px; line-height: 1.2; }
+.detail-company { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; }
+.detail-body { padding: 20px 24px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
+.detail-section-label { font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); opacity: 0.7; margin-bottom: 8px; }
+.detail-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+.detail-row-label { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); min-width: 80px; margin-top: 2px; flex-shrink: 0; }
+.detail-row-val { font-size: 13px; color: var(--text); line-height: 1.5; }
+.detail-notes { background: var(--navy3); border: 1px solid var(--border-dim); padding: 12px 14px; font-size: 13px; color: var(--text-mid); line-height: 1.65; font-style: italic; }
+.detail-actions { padding: 16px 24px; border-top: 1px solid var(--border-dim); display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--navy2); border: 1px solid var(--border); padding: 12px 20px; font-size: 13px; color: var(--text); z-index: 500; opacity: 0; transition: opacity 0.3s; white-space: nowrap; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+/* ── LOADING ── */
+.loading-row td { text-align: center; padding: 40px; color: var(--text-dim); font-size: 13px; }
+
+@media (max-width: 768px) {
+  .stats-bar { grid-template-columns: repeat(3,1fr); }
+  .stats-cell:nth-child(4), .stats-cell:nth-child(5) { display: none; }
+  .detail-panel { width: 100%; }
+  table { min-width: 700px; }
+  .header-title { display: none; }
+  .form-row-2 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- CONFIG BANNER -->
+<div id="config-banner">
+  ⚠️ Supabase is not configured. Open this file and add your SUPABASE_URL and SUPABASE_ANON_KEY at the top of the script.
+  <a onclick="document.getElementById('config-banner').style.display='none'">Dismiss</a>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">SWISS<span>FRU</span></div>
+    <div class="login-sub">Distributor CRM · Private Access</div>
+    <label class="login-label">Password</label>
+    <input class="login-input" type="password" id="login-pwd" placeholder="Enter password" autocomplete="current-password" />
+    <button class="login-btn" onclick="doLogin()">Enter</button>
+    <div class="login-error" id="login-err">Incorrect password. Try again.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="app-header">
+    <div class="header-brand">
+      <div class="header-wm">SWISS<span>FRU</span></div>
+      <div class="header-pipe">·</div>
+      <div class="header-title">Distributor CRM</div>
+    </div>
+    <div class="header-actions">
+      <span class="sync-dot" id="sync-dot"></span>
+      <span class="sync-label" id="sync-label">Live</span>
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()">Export CSV</button>
+      <button class="btn btn-gold" onclick="openAddModal()">+ Add Contact</button>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stats-cell"><div class="stats-n" id="stat-total">0</div><div class="stats-l">Total Contacts</div></div>
+    <div class="stats-cell"><div class="stats-n" id="stat-active" style="color:var(--green)">0</div><div class="stats-l">Active</div></div>
+    <div class="stats-cell"><div class="stats-n" id="stat-pending" style="color:var(--amber)">0</div><div class="stats-l">Pending</div></div>
+    <div class="stats-cell"><div class="stats-n" id="stat-followup" style="color:var(--blue)">0</div><div class="stats-l">Follow-Up Due</div></div>
+    <div class="stats-cell"><div class="stats-n" id="stat-orders" style="color:var(--gold)">0</div><div class="stats-l">Order in Progress</div></div>
+  </div>
+
+  <div class="filters-bar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" type="text" id="search-input" placeholder="Search by name, company, country..." oninput="renderTable()" />
+    </div>
+    <select class="filter-select" id="filter-status" onchange="renderTable()">
+      <option value="">All Statuses</option>
+      <option>Active</option><option>Pending</option><option>Follow-Up</option>
+      <option>Order in Progress</option><option>Declined</option>
+    </select>
+    <select class="filter-select" id="filter-country" onchange="renderTable()">
+      <option value="">All Countries</option>
+    </select>
+    <select class="filter-select" id="filter-method" onchange="renderTable()">
+      <option value="">All Methods</option>
+      <option>Email</option><option>LinkedIn</option><option>WhatsApp</option><option>Phone</option>
+    </select>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Contact</th><th>Country</th><th>Method</th>
+          <th>Status</th><th>Reminder</th><th>Last Updated</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr class="loading-row"><td colspan="7">Loading contacts...</td></tr>
+      </tbody>
+    </table>
+    <div id="empty-state" class="empty-state" style="display:none;">
+      <div class="empty-icon">📋</div>
+      <h3>No contacts yet</h3>
+      <p>Add your first distributor contact to get started.</p>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-header">
+    <div>
+      <div class="detail-country" id="dp-flag"></div>
+      <div class="detail-name" id="dp-name"></div>
+      <div class="detail-company" id="dp-company"></div>
+      <div id="dp-status"></div>
+    </div>
+    <button class="modal-close" onclick="closeDetail()">✕</button>
+  </div>
+  <div class="detail-body">
+    <div>
+      <div class="detail-section-label">Contact Information</div>
+      <div class="detail-row"><div class="detail-row-label">Country</div><div class="detail-row-val" id="dp-country"></div></div>
+      <div class="detail-row"><div class="detail-row-label">Email</div><div class="detail-row-val" id="dp-email"></div></div>
+      <div class="detail-row"><div class="detail-row-label">LinkedIn</div><div class="detail-row-val" id="dp-linkedin"></div></div>
+      <div class="detail-row"><div class="detail-row-label">Method</div><div class="detail-row-val" id="dp-method"></div></div>
+    </div>
+    <div>
+      <div class="detail-section-label">Outreach</div>
+      <div class="detail-row"><div class="detail-row-label">Date Sent</div><div class="detail-row-val" id="dp-date"></div></div>
+      <div class="detail-row"><div class="detail-row-label">Reminder</div><div class="detail-row-val" id="dp-reminder"></div></div>
+    </div>
+    <div>
+      <div class="detail-section-label">Notes</div>
+      <div class="detail-notes" id="dp-notes"></div>
+    </div>
+  </div>
+  <div class="detail-actions">
+    <button class="btn btn-gold btn-sm" id="dp-edit-btn">Edit</button>
+    <button class="btn btn-outline btn-sm" id="dp-cal-btn">Download Reminder</button>
+    <button class="btn btn-ghost btn-sm" id="dp-del-btn" style="border-color:rgba(248,113,113,0.2);color:var(--red);">Delete</button>
+  </div>
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Add Contact</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row-2">
+        <div><label class="form-label">Contact Name *</label><input class="form-input" id="f-name" placeholder="Full name" /></div>
+        <div><label class="form-label">Company Name *</label><input class="form-input" id="f-company" placeholder="Company" /></div>
+      </div>
+      <div class="form-row-2">
+        <div>
+          <label class="form-label">Country *</label>
+          <select class="form-select" id="f-country">
+            <option value="">Select country</option>
+            <option>🇸🇬 Singapore</option><option>🇲🇾 Malaysia</option><option>🇮🇩 Indonesia</option>
+            <option>🇧🇳 Brunei</option><option>🇵🇭 Philippines</option><option>🇷🇺 Russia</option>
+            <option>🇸🇦 Saudi Arabia</option><option>🇰🇼 Kuwait</option><option>🇦🇪 UAE</option>
+            <option>🇶🇦 Qatar</option><option>🇧🇭 Bahrain</option><option>🇦🇺 Australia</option>
+            <option>🇬🇧 United Kingdom</option><option>🇩🇪 Germany</option><option>🇫🇷 France</option>
+            <option>🇨🇦 Canada</option><option>🇺🇸 United States</option><option>🇿🇦 South Africa</option>
+            <option>🇳🇬 Nigeria</option><option>🇨🇳 China</option><option>🇹🇭 Thailand</option>
+            <option>🇧🇩 Bangladesh</option><option>🇲🇻 Maldives</option><option>🇲🇺 Mauritius</option>
+            <option>🇨🇱 Chile</option><option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Contact Method *</label>
+          <select class="form-select" id="f-method">
+            <option value="">Select method</option>
+            <option>Email</option><option>LinkedIn</option><option>WhatsApp</option><option>Phone</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row-2">
+        <div><label class="form-label">Email Address</label><input class="form-input" id="f-email" placeholder="contact@company.com" type="email" /></div>
+        <div><label class="form-label">LinkedIn URL</label><input class="form-input" id="f-linkedin" placeholder="linkedin.com/in/..." /></div>
+      </div>
+      <div class="form-row-2">
+        <div>
+          <label class="form-label">Status *</label>
+          <select class="form-select" id="f-status">
+            <option value="">Select status</option>
+            <option>Pending</option><option>Active</option><option>Follow-Up</option>
+            <option>Order in Progress</option><option>Declined</option>
+          </select>
+        </div>
+        <div><label class="form-label">Date Contacted</label><input class="form-input" id="f-date" type="date" /></div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Notes</label>
+        <textarea class="form-textarea" id="f-notes" placeholder="What was discussed, what was sent, any key details..."></textarea>
+      </div>
+      <div>
+        <label class="form-label">Follow-Up Reminder</label>
+        <div class="form-check-row" onclick="toggleReminder()">
+          <input type="checkbox" id="f-reminder-check" />
+          <div>
+            <div class="form-check-label">Set a follow-up reminder</div>
+            <div class="form-check-sub">Downloads a calendar file you can add to Google Calendar</div>
+          </div>
+        </div>
+        <div id="reminder-date-wrap" style="display:none;margin-top:8px;">
+          <label class="form-label">Reminder Date</label>
+          <input class="form-input" id="f-reminder-date" type="date" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-gold" id="save-btn" onclick="saveContact()">Save Contact</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIGURATION — PASTE YOUR VALUES HERE
+// ═══════════════════════════════════════════════
+const SUPABASE_URL      = 'https://xspjwnpwqwdbzfwwkpan.supabase.co';       // e.g. https://xxxx.supabase.co
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzcGp3bnB3cXdkYnpmd3drcGFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4Mzg4NDUsImV4cCI6MjA5NjQxNDg0NX0.FlsrjxLkx2wD9MH5wien6a8Fb99DbAyjLgKLxjzNrDE';  // long string starting with eyJ...
+const PASSWORD          = 'swissfru2026';              // change this to whatever you like
+// ═══════════════════════════════════════════════
+
+const CONFIGURED = SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY';
+let supabase = null;
+let allContacts = [];
+let editingId = null;
+let openDetailId = null;
+
+// ── INIT ──
+if (!CONFIGURED) {
+  document.getElementById('config-banner').style.display = 'block';
+} else {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+// ── AUTH ──
+function doLogin() {
+  const pwd = document.getElementById('login-pwd').value;
+  if (pwd === PASSWORD) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    initApp();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+  }
+}
+document.getElementById('login-pwd').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── APP INIT ──
+async function initApp() {
+  if (!CONFIGURED) {
+    showToast('Configure Supabase first — see banner at top.');
+    setSyncState('error');
+    return;
+  }
+  setSyncState('syncing');
+  await fetchContacts();
+  subscribeToChanges();
+}
+
+// ── SUPABASE FETCH ──
+async function fetchContacts() {
+  setSyncState('syncing');
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('*')
+    .order('updated_at', { ascending: false });
+  if (error) { console.error(error); setSyncState('error'); showToast('Error loading contacts.'); return; }
+  allContacts = data || [];
+  renderTable();
+  renderStats();
+  populateCountryFilter();
+  setSyncState('live');
+}
+
+// ── REAL-TIME SUBSCRIPTION ──
+function subscribeToChanges() {
+  supabase
+    .channel('contacts-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'contacts' }, payload => {
+      setSyncState('syncing');
+      if (payload.eventType === 'INSERT') {
+        allContacts = [payload.new, ...allContacts];
+      } else if (payload.eventType === 'UPDATE') {
+        allContacts = allContacts.map(c => c.id === payload.new.id ? payload.new : c);
+        if (openDetailId === payload.new.id) openDetail(payload.new.id);
+      } else if (payload.eventType === 'DELETE') {
+        allContacts = allContacts.filter(c => c.id !== payload.old.id);
+        if (openDetailId === payload.old.id) closeDetail();
+      }
+      renderTable();
+      renderStats();
+      populateCountryFilter();
+      setSyncState('live');
+    })
+    .subscribe();
+}
+
+// ── SYNC STATE ──
+function setSyncState(state) {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  dot.className = 'sync-dot' + (state === 'syncing' ? ' syncing' : state === 'error' ? ' error' : '');
+  label.textContent = state === 'syncing' ? 'Syncing...' : state === 'error' ? 'Offline' : 'Live';
+}
+
+// ── RENDER ──
+function renderStats() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('stat-total').textContent = allContacts.length;
+  document.getElementById('stat-active').textContent = allContacts.filter(c => c.status === 'Active').length;
+  document.getElementById('stat-pending').textContent = allContacts.filter(c => c.status === 'Pending').length;
+  document.getElementById('stat-followup').textContent = allContacts.filter(c => c.reminder_date && c.reminder_date <= today && c.status !== 'Declined').length;
+  document.getElementById('stat-orders').textContent = allContacts.filter(c => c.status === 'Order in Progress').length;
+}
+
+function renderTable() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const filterStatus = document.getElementById('filter-status').value;
+  const filterCountry = document.getElementById('filter-country').value;
+  const filterMethod = document.getElementById('filter-method').value;
+  const today = new Date().toISOString().split('T')[0];
+
+  let filtered = allContacts.filter(c => {
+    const matchSearch = !search ||
+      (c.name||'').toLowerCase().includes(search) ||
+      (c.company||'').toLowerCase().includes(search) ||
+      (c.country||'').toLowerCase().includes(search);
+    return matchSearch &&
+      (!filterStatus  || c.status  === filterStatus) &&
+      (!filterCountry || c.country === filterCountry) &&
+      (!filterMethod  || c.method  === filterMethod);
+  });
+
+  filtered.sort((a,b) => {
+    const aOver = a.reminder_date && a.reminder_date <= today && a.status !== 'Declined';
+    const bOver = b.reminder_date && b.reminder_date <= today && b.status !== 'Declined';
+    if (aOver && !bOver) return -1;
+    if (!aOver && bOver) return 1;
+    return (b.updated_at||'').localeCompare(a.updated_at||'');
+  });
+
+  const tbody = document.getElementById('table-body');
+  const empty = document.getElementById('empty-state');
+
+  if (filtered.length === 0 && allContacts.length >= 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map(c => {
+    const flag = getFlag(c.country);
+    const chip = getChip(c.status);
+    const isOver = c.reminder_date && c.reminder_date <= today && c.status !== 'Declined';
+    const reminderHtml = c.reminder_date
+      ? `<span class="td-reminder${isOver?' overdue':''}">${isOver?'⚠️ ':'🔔 '}${formatDate(c.reminder_date)}</span>`
+      : `<span style="color:var(--text-dim);font-size:12px;">None</span>`;
+    return `
+      <tr onclick="openDetail('${c.id}')">
+        <td><div class="td-name">${esc(c.name||'')}</div><div class="td-sub">${esc(c.company||'')}</div></td>
+        <td><span class="td-flag">${flag}</span><div class="td-sub" style="margin-top:2px;">${esc(c.country||'')}</div></td>
+        <td><span class="td-method">${esc(c.method||'')}</span></td>
+        <td>${chip}</td>
+        <td>${reminderHtml}</td>
+        <td><div style="font-size:11px;color:var(--text-dim);">${c.updated_at?formatDate(c.updated_at.split('T')[0]):''}</div></td>
+        <td onclick="event.stopPropagation()">
+          <button class="btn btn-outline btn-sm" onclick="openEditModal('${c.id}')">Edit</button>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function populateCountryFilter() {
+  const sel = document.getElementById('filter-country');
+  const current = sel.value;
+  const countries = [...new Set(allContacts.map(c=>c.country).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All Countries</option>' +
+    countries.map(c => `<option${c===current?' selected':''}>${c}</option>`).join('');
+}
+
+// ── CHIP / FLAG ──
+function getChip(status) {
+  const map = { 'Active':'chip-active','Pending':'chip-pending','Follow-Up':'chip-followup','Declined':'chip-declined','Order in Progress':'chip-order' };
+  const cls = map[status]||'chip-pending';
+  return `<span class="chip ${cls}"><span class="chip-dot"></span>${status||'Pending'}</span>`;
+}
+function getFlag(country) {
+  if (!country) return '🌍';
+  const flags = { Singapore:'🇸🇬',Malaysia:'🇲🇾',Indonesia:'🇮🇩',Brunei:'🇧🇳',Philippines:'🇵🇭',Russia:'🇷🇺','Saudi Arabia':'🇸🇦',Kuwait:'🇰🇼',UAE:'🇦🇪',Qatar:'🇶🇦',Bahrain:'🇧🇭',Australia:'🇦🇺','United Kingdom':'🇬🇧',Germany:'🇩🇪',France:'🇫🇷',Canada:'🇨🇦','United States':'🇺🇸','South Africa':'🇿🇦',Nigeria:'🇳🇬',China:'🇨🇳',Thailand:'🇹🇭',Bangladesh:'🇧🇩',Maldives:'🇲🇻',Mauritius:'🇲🇺',Chile:'🇨🇱' };
+  for (const [name,flag] of Object.entries(flags)) { if (country.includes(name)) return flag; }
+  return '🌍';
+}
+
+// ── DETAIL PANEL ──
+function openDetail(id) {
+  const c = allContacts.find(x => x.id === id);
+  if (!c) return;
+  openDetailId = id;
+  const today = new Date().toISOString().split('T')[0];
+  const isOver = c.reminder_date && c.reminder_date <= today && c.status !== 'Declined';
+  document.getElementById('dp-flag').textContent = getFlag(c.country);
+  document.getElementById('dp-name').textContent = c.name||'';
+  document.getElementById('dp-company').textContent = c.company||'';
+  document.getElementById('dp-status').innerHTML = getChip(c.status);
+  document.getElementById('dp-country').textContent = c.country||'';
+  document.getElementById('dp-email').textContent = c.email||'Not provided';
+  document.getElementById('dp-linkedin').textContent = c.linkedin||'Not provided';
+  document.getElementById('dp-method').textContent = c.method||'';
+  document.getElementById('dp-date').textContent = c.date_contacted ? formatDate(c.date_contacted) : 'Not recorded';
+  document.getElementById('dp-reminder').innerHTML = c.reminder_date
+    ? `<span style="color:${isOver?'var(--red)':'var(--blue)'};">${isOver?'⚠️ Overdue: ':'🔔 '}${formatDate(c.reminder_date)}</span>`
+    : 'None set';
+  document.getElementById('dp-notes').textContent = c.notes||'No notes added.';
+  document.getElementById('dp-edit-btn').onclick = () => { closeDetail(); openEditModal(id); };
+  document.getElementById('dp-cal-btn').onclick = () => downloadICS(c);
+  document.getElementById('dp-cal-btn').style.display = c.reminder_date ? 'inline-block' : 'none';
+  document.getElementById('dp-del-btn').onclick = () => deleteContact(id);
+  document.getElementById('detail-panel').classList.add('open');
+}
+function closeDetail() { document.getElementById('detail-panel').classList.remove('open'); openDetailId = null; }
+
+// ── MODAL ──
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Add Contact';
+  clearForm();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function openEditModal(id) {
+  const c = allContacts.find(x => x.id === id);
+  if (!c) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'Edit Contact';
+  document.getElementById('f-name').value = c.name||'';
+  document.getElementById('f-company').value = c.company||'';
+  document.getElementById('f-country').value = c.country||'';
+  document.getElementById('f-method').value = c.method||'';
+  document.getElementById('f-email').value = c.email||'';
+  document.getElementById('f-linkedin').value = c.linkedin||'';
+  document.getElementById('f-status').value = c.status||'';
+  document.getElementById('f-date').value = c.date_contacted||'';
+  document.getElementById('f-notes').value = c.notes||'';
+  if (c.reminder_date) {
+    document.getElementById('f-reminder-check').checked = true;
+    document.getElementById('reminder-date-wrap').style.display = 'block';
+    document.getElementById('f-reminder-date').value = c.reminder_date;
+  } else {
+    document.getElementById('f-reminder-check').checked = false;
+    document.getElementById('reminder-date-wrap').style.display = 'none';
+    document.getElementById('f-reminder-date').value = '';
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); editingId = null; }
+function clearForm() {
+  ['f-name','f-company','f-email','f-linkedin','f-notes','f-reminder-date'].forEach(id => document.getElementById(id).value = '');
+  ['f-country','f-method','f-status'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('f-reminder-check').checked = false;
+  document.getElementById('reminder-date-wrap').style.display = 'none';
+}
+function toggleReminder() {
+  const cb = document.getElementById('f-reminder-check');
+  cb.checked = !cb.checked;
+  document.getElementById('reminder-date-wrap').style.display = cb.checked ? 'block' : 'none';
+}
+
+// ── SAVE ──
+async function saveContact() {
+  const name    = document.getElementById('f-name').value.trim();
+  const company = document.getElementById('f-company').value.trim();
+  const country = document.getElementById('f-country').value;
+  const method  = document.getElementById('f-method').value;
+  const status  = document.getElementById('f-status').value;
+  if (!name||!company||!country||!method||!status) { showToast('Please fill in all required fields.'); return; }
+
+  const btn = document.getElementById('save-btn');
+  btn.textContent = 'Saving...'; btn.disabled = true;
+  setSyncState('syncing');
+
+  const reminderChecked = document.getElementById('f-reminder-check').checked;
+  const reminderDate = reminderChecked ? document.getElementById('f-reminder-date').value : null;
+
+  const payload = {
+    name, company, country, method, status,
+    email:          document.getElementById('f-email').value.trim()||null,
+    linkedin:       document.getElementById('f-linkedin').value.trim()||null,
+    date_contacted: document.getElementById('f-date').value||null,
+    notes:          document.getElementById('f-notes').value.trim()||null,
+    reminder_date:  reminderDate||null,
+    updated_at:     new Date().toISOString(),
+  };
+
+  let error;
+  if (editingId) {
+    ({ error } = await supabase.from('contacts').update(payload).eq('id', editingId));
+    if (!error) showToast('Contact updated.');
+  } else {
+    payload.created_at = new Date().toISOString();
+    ({ error } = await supabase.from('contacts').insert([payload]));
+    if (!error) showToast('Contact added.');
+  }
+
+  btn.textContent = 'Save Contact'; btn.disabled = false;
+
+  if (error) { console.error(error); showToast('Error saving. Try again.'); setSyncState('error'); return; }
+
+  if (reminderChecked && reminderDate) {
+    downloadICS({ name, company, country, method, status, notes: payload.notes, reminder_date: reminderDate });
+  }
+
+  closeModal();
+  await fetchContacts();
+}
+
+// ── DELETE ──
+async function deleteContact(id) {
+  if (!confirm('Delete this contact? This cannot be undone.')) return;
+  setSyncState('syncing');
+  const { error } = await supabase.from('contacts').delete().eq('id', id);
+  if (error) { showToast('Error deleting.'); setSyncState('error'); return; }
+  closeDetail();
+  showToast('Contact deleted.');
+  await fetchContacts();
+}
+
+// ── ICS CALENDAR ──
+function downloadICS(c) {
+  if (!c.reminder_date) { showToast('No reminder date set.'); return; }
+  const dateStr = c.reminder_date.replace(/-/g,'');
+  const now = new Date().toISOString().replace(/[-:\.]/g,'').substring(0,15)+'Z';
+  const summary = `Follow up: ${c.name} (${c.company}) via SwissFru`;
+  const desc = `Contact: ${c.name} at ${c.company}\\nCountry: ${c.country}\\nMethod: ${c.method}\\nStatus: ${c.status}\\nNotes: ${c.notes||'None'}`;
+  const ics = [
+    'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//SwissFru CRM//EN','BEGIN:VEVENT',
+    `UID:crm-${Date.now()}@swissfru`,`DTSTAMP:${now}`,
+    `DTSTART;VALUE=DATE:${dateStr}`,`DTEND;VALUE=DATE:${dateStr}`,
+    `SUMMARY:${summary}`,`DESCRIPTION:${desc}`,
+    'BEGIN:VALARM','TRIGGER:-PT0M','ACTION:DISPLAY',`DESCRIPTION:${summary}`,'END:VALARM',
+    'END:VEVENT','END:VCALENDAR'
+  ].join('\r\n');
+  const blob = new Blob([ics],{type:'text/calendar'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `followup_${(c.name||'contact').replace(/\s+/g,'_')}.ics`;
+  a.click();
+  showToast('Calendar file downloaded.');
+}
+
+// ── EXPORT CSV ──
+function exportCSV() {
+  if (!allContacts.length) { showToast('No contacts to export.'); return; }
+  const headers = ['Name','Company','Country','Method','Email','LinkedIn','Status','Date Contacted','Reminder Date','Notes'];
+  const rows = allContacts.map(c => [c.name,c.company,c.country,c.method,c.email,c.linkedin,c.status,c.date_contacted,c.reminder_date,c.notes]
+    .map(v=>`"${(v||'').replace(/"/g,'""')}"`));
+  const csv = [headers.join(','), ...rows.map(r=>r.join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = `swissfru_crm_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  showToast('CSV exported.');
+}
+
+// ── HELPERS ──
+function formatDate(str) {
+  if (!str) return '';
+  return new Date(str+'T00:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+}
+function esc(str) {
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ── CLOSE DETAIL ON OUTSIDE CLICK ──
+document.addEventListener('click', e => {
+  const panel = document.getElementById('detail-panel');
+  if (panel.classList.contains('open') && !panel.contains(e.target) && !e.target.closest('tr')) closeDetail();
+});
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+</script>
+</body>
+</html>
